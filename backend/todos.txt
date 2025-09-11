@@ -1,0 +1,75 @@
+MVP (Get it out the door before you lose motivation)
+Must-have Core
+
+Login / Logout / Register (already in your pocket)
+
+Protected routes (teacher/student split, check)
+
+Course management: create, edit, delete courses
+
+Basic content upload: PDFs, videos, text lectures
+
+Quizzes (MCQs only): auto-grading, show scores
+
+Assignments (file upload): manual grading
+
+Student dashboard: list of enrolled courses + progress bar
+
+Teacher dashboard: see enrolled students, grade submissions
+
+Progress tracking: % completed, quiz scores
+
+Announcements: text-only course updates
+
+Discussion board (super basic): threaded comments, no moderation
+
+Nice-to-have but still MVP-level
+
+Dark mode (your devs will mutiny if this isn’t there)
+
+Search/filter courses
+
+Email verification + password reset
+
+Phase 2 (aka “full-blown beast” mode)
+Engagement crack
+
+Gamification: points, badges, leaderboards
+
+Certificates of completion
+
+Notes + bookmarks in courses
+
+Push notifications + calendar integration
+
+Live classes integration (Zoom/Meet or custom streaming)
+
+Admin/Control freak features
+
+Full analytics dashboard: completion rates, quiz performance heatmaps
+
+Moderation panel: ban hammer, content approval
+
+Monetization: course payments, subscriptions, discount codes
+
+Tech candy
+
+AI-powered quiz/assignment generation
+
+Plagiarism detection
+
+AI tutor/chatbot for quick Q&A
+
+Offline access (video + materials downloads)
+
+API for institutions/nerds who want integrations
+
+Bonus flex features
+
+Peer review system
+
+Portfolio builder for students
+
+Multilingual + accessibility enhancements
+
+Version control for content (teachers can “publish updates” like devs do with apps)
