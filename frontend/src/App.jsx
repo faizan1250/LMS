@@ -7,6 +7,9 @@ import TeacherPanel from './pages/TeacherPanel';
 import Forbidden from './pages/Forbidden';
 import RegisterPage from './pages/RegisterPage';
 import LandingPage from './pages/LandingPage';
+import CourseInfo from './components/teacher/CourseInfo';
+import CourseEditor from './components/teacher/CourseEditor'; // 👈 import editor
+import CourseView from './components/teacher/CourseView';
 
 function App() {
   return (
@@ -30,6 +33,34 @@ function App() {
         element={
           <RequireRole allowed={['teacher']}>
             <TeacherPanel />
+          </RequireRole>
+        }
+      />
+
+      {/* ✅ Protected teacher route for course info */}
+      <Route
+        path="/course"
+        element={
+          <RequireRole allowed={['teacher']}>
+            <CourseInfo />
+          </RequireRole>
+        }
+      />
+
+      {/* ✅ Protected teacher route for course editor */}
+      <Route
+        path="/courses/:courseId/edit"
+        element={
+          <RequireRole allowed={['teacher']}>
+            <CourseEditor />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/courses/:courseId"
+        element={
+          <RequireRole allowed={['teacher']}>
+            <CourseView />
           </RequireRole>
         }
       />

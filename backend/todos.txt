@@ -1,9 +1,9 @@
 MVP (Get it out the door before you lose motivation)
 Must-have Core
 
-Login / Logout / Register (already in your pocket)
+Login / Logout / Register (already in your pocket) DONE
 
-Protected routes (teacher/student split, check)
+Protected routes (teacher/student split, check) DONE
 
 Course management: create, edit, delete courses
 
