@@ -14,6 +14,7 @@ import authRoutes from './routes/authRoutes.js';
 
 // new course routes
 import courseRoutes from './routes/courseRoutes.js';
+import testRoutes from './routes/testRoutes.js';
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ mongoose
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
+app.use('/api/tests', testRoutes);
 
 // Basic health checkr
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

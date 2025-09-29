@@ -6,25 +6,67 @@ import * as controller from '../controllers/courseController.js';
 
 const router = express.Router();
 
-// POST /api/courses
-// Only authenticated teachers or admins can create courses
-router.post('/', protect, authorize('teacher', 'admin'), controller.createCourse);
-
-// GET /api/courses/:id
-// Any authenticated user can fetch a course; controller will enforce finer permissions if needed
-router.get('/:id', protect, controller.getCourse);
+// Read + search/filter
+router.post('/', protect, authorize('teacher','admin'), controller.createCourse);
 router.get('/', protect, controller.listCourses);
 
-// PUT /api/courses/:id
-// Only the teacher who created the course (or admins) should edit — controller should enforce ownership
-router.put('/:id', protect, authorize('teacher', 'admin'), controller.updateCourse);
+// ---- keep before any `/:id` routes ----
+router.get('/me/enrollments', protect, authorize('student'), controller.myEnrollments);
+router.get('/me/bookmarks', protect, authorize('student'), controller.myBookmarks);
+// --------------------------------------
 
-// PUT /api/courses/:id/publish
-// Only teachers/admins
-router.put('/:id/publish', protect, authorize('teacher', 'admin'), controller.publishCourse);
+// Single-course + nested
+router.get('/:id', protect, controller.getCourse);
+router.put('/:id', protect, authorize('teacher','admin'), controller.updateCourse);
+router.put('/:id/publish', protect, authorize('teacher','admin'), controller.publishCourse);
+router.delete('/:id', protect, authorize('teacher','admin'), controller.deleteCourse);
 
-// DELETE /api/courses/:id
-// Only teachers/admins
-router.delete('/:id', protect, authorize('teacher', 'admin'), controller.deleteCourse);
+// Student features on a specific id
+router.post('/:id/enroll', protect, authorize('student'), controller.enrollInCourse);
+router.delete('/:id/enroll', protect, authorize('student'), controller.unenrollFromCourse);
+router.patch('/:id/progress', protect, authorize('student'), controller.updateProgress);
+router.get('/:id/progress', protect, controller.getProgress);
+router.post('/:id/bookmark', protect, authorize('student'), controller.addBookmark);
+router.delete('/:id/bookmark', protect, authorize('student'), controller.removeBookmark);
+router.post('/:id/rate', protect, authorize('student'), controller.rateCourse);
+router.get('/:id/ratings', protect, controller.listRatings);
+router.get('/:id/students', protect, authorize('teacher','admin'), controller.listEnrolledStudents);
+
+// NEW: lesson assignment submit
+router.post(
+  '/:id/lessons/:lessonId/assignment/submit',
+  protect,
+  authorize('student'),
+  controller.submitAssignment
+);
+
+// NEW: module quiz attempt
+router.post(
+  '/:id/modules/:moduleId/quiz/attempt',
+  protect,
+  authorize('student'),
+  controller.attemptModuleQuiz
+);
+
+// NEW: per-module status (quiz pass, lesson gate)
+router.get(
+  '/:id/modules/:moduleId/status',
+  protect,
+  controller.getModuleStatus
+);
+router.get(
+  '/:id/assignments/submissions',
+  protect,
+  authorize('teacher','admin'),
+  controller.listAssignmentSubmissions
+);
+
+// --- Teacher: grade a specific student's lesson assignment ---
+router.post(
+  '/:id/lessons/:lessonId/assignment/grade',
+  protect,
+  authorize('teacher','admin'),
+  controller.gradeAssignment
+);
 
 export default router;

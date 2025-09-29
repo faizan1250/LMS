@@ -1,177 +1,697 @@
-// frontend/src/components/courses/CreateCourseForm.jsx
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import courseApi from '../../api/course';
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import CourseView from "./CourseView";
+import CreateCourseForm from "./CreateCourseForm";
+import { motion, AnimatePresence, LazyMotion, domAnimation } from "framer-motion";
+import {
+  ArrowLeftIcon,
+  AcademicCapIcon,
+  PlusIcon,
+  ChartBarIcon,
+  RocketLaunchIcon,
+  UsersIcon,
+  ClockIcon,
+  TrophyIcon,
+  SparklesIcon,
+  ArrowTrendingUpIcon,
+  BookOpenIcon,
+  EyeIcon,
+  PencilIcon,
+  ShareIcon,
+  CogIcon,
+  LightBulbIcon,
+  StarIcon,
+  DocumentChartBarIcon,
+} from "@heroicons/react/24/outline";
+import courseApi from "../../api/course";
 
-/**
- * CreateCourseForm
- * props:
- *  - onCreated(optional) -> callback({ courseId })
- */
-export default function CreateCourseForm({ onCreated }) {
-  const [title, setTitle] = useState('');
-  const [audience, setAudience] = useState('');
-  const [duration, setDuration] = useState('4'); // default duration (weeks/hours — your choice)
-  const [format, setFormat] = useState('self-paced'); // 'self-paced' | 'instructor-led' | 'blended'
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState(null);
+// Premium design system
+const premiumColors = {
+  primary: {
+    50: "#f0f9ff",
+    100: "#e0f2fe",
+    500: "#0ea5e9",
+    600: "#0284c7",
+    700: "#0369a1",
+    900: "#0c4a6e",
+  },
+  accent: {
+    50: "#fdf4ff",
+    500: "#d946ef",
+    600: "#c026d3",
+  },
+  success: {
+    500: "#10b981",
+    600: "#059669",
+  },
+  warning: {
+    500: "#f59e0b",
+    600: "#d97706",
+  },
+  luxury: {
+    gold: "#ffd700",
+    platinum: "#e5e4e2",
+  }
+};
 
+const glassStyle = "bg-white/80 backdrop-blur-xl border border-white/40 shadow-2xl shadow-black/10";
+const premiumGradient = "bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20";
+
+// Premium Stat Card Component
+const PremiumStatCard = ({ icon: Icon, label, value, color = "primary", trend, loading, onClick }) => (
+  <motion.div
+    whileHover={{ y: -4, scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    onClick={onClick}
+    className={`${glassStyle} rounded-3xl p-6 relative overflow-hidden group cursor-pointer transition-all duration-300 ${
+      onClick ? 'hover:shadow-2xl hover:shadow-black/20' : ''
+    }`}
+  >
+    {/* Animated background elements */}
+    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-white/20 to-transparent rounded-bl-full" />
+    <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-to-tr from-white/10 to-transparent rounded-tr-full" />
+    
+    <div className="relative flex items-center justify-between">
+      <div className="flex-1">
+        <p className="text-sm font-semibold text-slate-600 mb-2">{label}</p>
+        {loading ? (
+          <div className="h-8 bg-gradient-to-r from-slate-200 to-slate-100 rounded-2xl w-3/4 animate-pulse" />
+        ) : (
+          <p className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+            {value}
+          </p>
+        )}
+        {trend !== undefined && !loading && (
+          <motion.div 
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className={`flex items-center mt-2 text-sm font-medium ${
+              trend > 0 ? 'text-emerald-600' : trend < 0 ? 'text-rose-600' : 'text-slate-500'
+            }`}
+          >
+            <ArrowTrendingUpIcon className={`h-4 w-4 mr-1 ${trend < 0 ? 'rotate-180' : ''}`} />
+            {Math.abs(trend)}%
+            <span className="text-slate-400 text-xs ml-1">this month</span>
+          </motion.div>
+        )}
+      </div>
+      <motion.div 
+        whileHover={{ scale: 1.1, rotate: 5 }}
+        className={`p-3 rounded-2xl bg-gradient-to-br from-${premiumColors[color][500]} to-${premiumColors[color][600]} shadow-lg group-hover:shadow-xl transition-shadow duration-300`}
+      >
+        <Icon className="h-6 w-6 text-white" />
+      </motion.div>
+    </div>
+
+    {/* Hover effect overlay */}
+    {onClick && (
+      <motion.div
+        initial={{ opacity: 0 }}
+        whileHover={{ opacity: 1 }}
+        className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-3xl"
+      />
+    )}
+  </motion.div>
+);
+
+// Enhanced Loading Skeleton
+const PremiumSkeletonGrid = () => (
+  <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    {[...Array(4)].map((_, i) => (
+      <motion.div
+        key={i}
+        initial={{ opacity: 0.6 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.5, repeat: Infinity, repeatType: "reverse" }}
+        className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/40 p-6"
+      >
+        <div className="space-y-4">
+          <div className="h-4 bg-gradient-to-r from-slate-200 to-slate-100 rounded-2xl w-1/2 animate-pulse" />
+          <div className="h-8 bg-gradient-to-r from-slate-200 to-slate-100 rounded-2xl w-3/4 animate-pulse" />
+          <div className="h-4 bg-gradient-to-r from-slate-200 to-slate-100 rounded-2xl w-1/3 animate-pulse" />
+        </div>
+      </motion.div>
+    ))}
+  </div>
+);
+
+// Quick Action Button Component
+const QuickActionButton = ({ icon: Icon, label, description, color = "primary", onClick, disabled }) => (
+  <motion.button
+    whileHover={{ scale: disabled ? 1 : 1.02, y: disabled ? 0 : -2 }}
+    whileTap={{ scale: disabled ? 1 : 0.98 }}
+    onClick={onClick}
+    disabled={disabled}
+    className={`w-full p-6 rounded-2xl text-left group transition-all duration-300 ${
+      disabled 
+        ? 'bg-slate-100/60 text-slate-400 cursor-not-allowed' 
+        : `bg-gradient-to-br from-${premiumColors[color][50]} to-white border border-${premiumColors[color][200]}/40 hover:shadow-lg hover:border-${premiumColors[color][300]}/60 cursor-pointer`
+    }`}
+  >
+    <div className="flex items-start gap-4">
+      <div className={`p-3 rounded-2xl ${
+        disabled 
+          ? 'bg-slate-200 text-slate-400' 
+          : `bg-gradient-to-br from-${premiumColors[color][500]} to-${premiumColors[color][600]} text-white shadow-lg`
+      }`}>
+        <Icon className="h-6 w-6" />
+      </div>
+      <div className="flex-1">
+        <h3 className={`font-semibold text-lg mb-1 ${
+          disabled ? 'text-slate-400' : 'text-slate-900'
+        }`}>
+          {label}
+        </h3>
+        <p className={`text-sm ${
+          disabled ? 'text-slate-400' : 'text-slate-600'
+        }`}>
+          {description}
+        </p>
+      </div>
+      {!disabled && (
+        <motion.div
+          initial={{ opacity: 0, x: -10 }}
+          whileHover={{ opacity: 1, x: 0 }}
+          className="opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        >
+          <PlusIcon className="h-5 w-5 text-slate-400" />
+        </motion.div>
+      )}
+    </div>
+  </motion.button>
+);
+
+export default function CourseInfo() {
   const navigate = useNavigate();
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    activeCourses: 0,
+    draftCourses: 0,
+    totalStudents: 0,
+    averageCompletion: 0,
+    totalCourses: 0,
+  });
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const containerRef = useRef(null);
 
-  const validate = () => {
-    if (!title || typeof title !== 'string' || title.trim().length < 3) {
-      return 'Title is required (min 3 characters).';
-    }
-    // optional: validate duration is positive integer
-    const d = parseInt(String(duration || '0'), 10);
-    if (Number.isNaN(d) || d < 1) {
-      return 'Duration must be a positive number.';
-    }
-    return null;
-  };
-
-  const handleSubmit = async (e) => {
-    e?.preventDefault();
-    setError(null);
-
-    const clientErr = validate();
-    if (clientErr) {
-      setError(clientErr);
-      return;
-    }
-
-    setCreating(true);
-
+  const fetchCoursesAndStats = useCallback(async () => {
+    let cancelled = false;
     try {
-      // Backend expects: { title, audience, duration, format }
-      const payload = {
-        title: title.trim(),
-        audience: audience.trim() || undefined,
-        duration: duration ? String(duration).trim() : undefined,
-        format: format || undefined
-      };
+      setLoading(true);
 
-      const res = await courseApi.createCourse(payload); // ensure createCourse accepts an object
-      const courseId = res?.courseId;
+      // 1) Load teacher-owned courses
+      const teacherCourses = await courseApi.listOwned();
+      if (cancelled) return;
+      setCourses(Array.isArray(teacherCourses) ? teacherCourses : []);
 
-      if (onCreated) onCreated({ courseId });
-
-      // navigate to the editor for the new draft
-      if (courseId) {
-        navigate(`/courses/${courseId}/edit`);
-      } else {
-        // fallback: show success but no id (should not happen normally)
-        setError('Course created but server did not return an id.');
+      if (!teacherCourses?.length) {
+        setStats({
+          activeCourses: 0,
+          draftCourses: 0,
+          totalStudents: 0,
+          averageCompletion: 0,
+          totalCourses: 0,
+        });
+        return;
       }
-    } catch (err) {
-      console.error('Create course error', err);
-      // backend returns { error: '...' } per your server code; handle common shapes
-      const serverData = err?.response?.data;
-      const serverMsg = serverData?.error || serverData?.message || err?.message || 'Create failed';
-      setError(serverMsg);
+
+      // 2) For each course, get enrolled students and sum progress
+      const perCourse = await Promise.all(
+        teacherCourses.map(async (c) => {
+          try {
+            const r = await courseApi.listEnrolledStudents(c._id);
+            const students = r?.students || r?.rows || (Array.isArray(r) ? r : []);
+            const count = Array.isArray(students) ? students.length : 0;
+
+            const sumPct = (students || []).reduce((s, st) => {
+              const pct =
+                Number(st?.progressPercent) ??
+                Number(st?.progress?.percent) ??
+                0;
+              return s + (Number.isFinite(pct) ? pct : 0);
+            }, 0);
+
+            return { id: c._id, count, sumPct };
+          } catch {
+            return { id: c._id, count: 0, sumPct: 0 };
+          }
+        })
+      );
+      if (cancelled) return;
+
+      const totalStudents = perCourse.reduce((s, x) => s + (x.count || 0), 0);
+      const totalPctSum = perCourse.reduce((s, x) => s + (x.sumPct || 0), 0);
+      const averageCompletion =
+        totalStudents > 0 ? Math.round(totalPctSum / totalStudents) : 0;
+
+      const activeCourses = teacherCourses.filter(
+        (c) => c.status === "published" || c.published === true
+      ).length;
+      const draftCourses = teacherCourses.filter(
+        (c) => c.status === "draft" || c.published === false
+      ).length;
+
+      setStats({
+        activeCourses,
+        draftCourses,
+        totalStudents,
+        averageCompletion,
+        totalCourses: teacherCourses.length,
+      });
     } finally {
-      setCreating(false);
+      if (!cancelled) setLoading(false);
     }
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const cancel = fetchCoursesAndStats();
+    return () => {
+      if (typeof cancel === "function") cancel();
+    };
+  }, [fetchCoursesAndStats]);
+
+  const handleCourseCreated = () => {
+    setShowCreateForm(false);
+    fetchCoursesAndStats();
   };
+
+  const quickActions = [
+    {
+      icon: RocketLaunchIcon,
+      label: "AI Course Generator",
+      description: "Create a complete course with AI in minutes",
+      color: "accent",
+      onClick: () => navigate("/courses/new?ai=true"),
+    },
+    {
+      icon: BookOpenIcon,
+      label: "Course Templates",
+      description: "Start with professionally designed templates",
+      color: "primary",
+      onClick: () => navigate("/templates"),
+    },
+    {
+      icon: ShareIcon,
+      label: "Import Content",
+      description: "Bring in existing course materials",
+      color: "success",
+      onClick: () => navigate("/import"),
+    },
+  ];
 
   return (
-    <form className="bg-white p-4 rounded-md shadow" onSubmit={handleSubmit} aria-labelledby="create-course-heading">
-      <h3 id="create-course-heading" className="text-lg font-medium text-gray-900 mb-3">Create new course</h3>
-
-      <label className="block mb-2">
-        <span className="text-sm font-medium text-gray-700">Course title</span>
-        <input
-          className="w-full px-3 py-2 border rounded mt-1"
-          placeholder="e.g. Intro to Machine Learning"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          disabled={creating}
-          aria-required
-        />
-      </label>
-
-      <label className="block mb-2">
-        <span className="text-sm font-medium text-gray-700">Target audience (optional)</span>
-        <input
-          className="w-full px-3 py-2 border rounded mt-1"
-          placeholder="e.g. Beginners, data analysts, product managers"
-          value={audience}
-          onChange={(e) => setAudience(e.target.value)}
-          disabled={creating}
-        />
-      </label>
-
-      <div className="flex gap-3 mb-2">
-        <label className="flex-1">
-          <span className="text-sm font-medium text-gray-700">Estimated duration</span>
-          <div className="mt-1 flex gap-2">
-            <input
-              type="number"
-              min="1"
-              className="w-24 px-2 py-2 border rounded"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              disabled={creating}
-              aria-label="duration"
-            />
-            <select
-              className="px-2 py-2 border rounded"
-              disabled={creating}
-              aria-label="duration unit (weeks/hours)"
-              value="weeks" // keep UI simple — server currently just receives duration string
-              onChange={() => {}}
-            >
-              <option value="weeks">weeks</option>
-            </select>
-          </div>
-          <p className="text-xs text-gray-400 mt-1">Provide a rough duration (positive number). Unit: weeks.</p>
-        </label>
-
-        <label style={{ minWidth: 160 }}>
-          <span className="text-sm font-medium text-gray-700">Format</span>
-          <select
-            className="w-full px-3 py-2 border rounded mt-1"
-            value={format}
-            onChange={(e) => setFormat(e.target.value)}
-            disabled={creating}
+    <LazyMotion features={domAnimation}>
+      <div 
+        className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-purple-50/30 p-6 relative overflow-hidden"
+        ref={containerRef}
+      >
+        {/* Animated background elements */}
+        <div className="absolute top-0 left-0 w-72 h-72 bg-gradient-to-br from-blue-200/20 to-purple-300/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-br from-amber-200/10 to-pink-300/10 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
+        
+        <div className="max-w-8xl mx-auto relative z-10">
+          {/* Premium Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, type: "spring" }}
+            className="flex items-center justify-between mb-8"
           >
-            <option value="self-paced">Self-paced</option>
-            <option value="instructor-led">Instructor-led</option>
-            <option value="blended">Blended</option>
-          </select>
-        </label>
+            <div className="flex items-center gap-4">
+              <motion.button
+                onClick={() => navigate("/dashboard")}
+                className="flex items-center gap-3 px-5 py-4 bg-white/80 backdrop-blur-xl rounded-2xl border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 group"
+                whileHover={{ scale: 1.02, x: -2 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <ArrowLeftIcon className="h-5 w-5 text-slate-700 group-hover:text-blue-600 transition-colors" />
+                <span className="font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">
+                  Back to Dashboard
+                </span>
+              </motion.button>
+            </div>
+
+            <div className="text-right">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex items-center gap-3 justify-end mb-2"
+              >
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                  <AcademicCapIcon className="h-6 w-6 text-white" />
+                </div>
+                <h1 className="text-4xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  Course Studio
+                </h1>
+              </motion.div>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="text-slate-600 text-lg"
+              >
+                {loading ? "Loading your educational empire..." : `Masterpiece management for ${stats.totalCourses} courses`}
+              </motion.p>
+            </div>
+          </motion.div>
+
+          {/* Enhanced Stats Dashboard */}
+          {loading ? (
+            <PremiumSkeletonGrid />
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+            >
+              <PremiumStatCard
+                icon={AcademicCapIcon}
+                label="Total Courses"
+                value={stats.totalCourses}
+                color="primary"
+                trend={+12}
+                loading={loading}
+                onClick={() => {/* Navigate to courses list */}}
+              />
+              <PremiumStatCard
+                icon={UsersIcon}
+                label="Students Enrolled"
+                value={stats.totalStudents.toLocaleString()}
+                color="accent"
+                trend={+18}
+                loading={loading}
+                onClick={() => {/* Navigate to students */}}
+              />
+              <PremiumStatCard
+                icon={TrophyIcon}
+                label="Avg Completion"
+                value={`${stats.averageCompletion}%`}
+                color="success"
+                trend={+5}
+                loading={loading}
+              />
+              <PremiumStatCard
+                icon={ChartBarIcon}
+                label="Active Courses"
+                value={stats.activeCourses}
+                color="warning"
+                trend={+8}
+                loading={loading}
+              />
+            </motion.div>
+          )}
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            {/* Left Column - Creation & Actions */}
+            <motion.div
+              className="xl:col-span-1 space-y-6"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              {/* Quick Actions */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className={`${glassStyle} rounded-3xl p-8`}
+              >
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl shadow-lg">
+                    <RocketLaunchIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">Quick Start</h2>
+                    <p className="text-slate-600 mt-1">Launch your next educational masterpiece</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {quickActions.map((action, index) => (
+                    <motion.div
+                      key={action.label}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.4 + index * 0.1 }}
+                    >
+                      <QuickActionButton {...action} />
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* Create Course Panel */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className={`${glassStyle} rounded-3xl overflow-hidden`}
+              >
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 text-white relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
+                  <div className="relative">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+                        <PlusIcon className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold">Create New Course</h2>
+                        <p className="text-blue-100 mt-1">Craft your educational legacy</p>
+                      </div>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      {!showCreateForm ? (
+                        <motion.div
+                          key="prompt"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          className="space-y-4"
+                        >
+                          <p className="text-blue-100 leading-relaxed">
+                            Design and publish transformative learning experiences that inspire and educate.
+                          </p>
+                          <motion.button
+                            whileHover={{ scale: 1.02, y: -2 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => setShowCreateForm(true)}
+                            className="w-full py-4 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 group"
+                          >
+                            <PlusIcon className="h-5 w-5" />
+                            <span>Start Creating</span>
+                          </motion.button>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="form"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                        >
+                          <CreateCourseForm 
+                            onCourseCreated={handleCourseCreated}
+                            onCancel={() => setShowCreateForm(false)}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Performance Insights */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className={`${glassStyle} rounded-3xl p-8`}
+              >
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-lg">
+                    <ChartBarIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">Performance Insights</h2>
+                    <p className="text-slate-600 mt-1">Your teaching impact analytics</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                    <div className="flex items-center gap-3">
+                      <BookOpenIcon className="h-5 w-5 text-slate-600" />
+                      <div>
+                        <p className="font-semibold text-slate-900">Course Completion</p>
+                        <p className="text-slate-500 text-sm">Average student progress</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-slate-900">{stats.averageCompletion}%</p>
+                      <p className="text-emerald-600 text-sm font-medium">+5% this month</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                    <div className="flex items-center gap-3">
+                      <UsersIcon className="h-5 w-5 text-slate-600" />
+                      <div>
+                        <p className="font-semibold text-slate-900">Student Engagement</p>
+                        <p className="text-slate-500 text-sm">Active learners</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-slate-900">{Math.round(stats.totalStudents * 0.75)}</p>
+                      <p className="text-blue-600 text-sm font-medium">75% active</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                    <div className="flex items-center gap-3">
+                      <StarIcon className="h-5 w-5 text-slate-600" />
+                      <div>
+                        <p className="font-semibold text-slate-900">Satisfaction Rate</p>
+                        <p className="text-slate-500 text-sm">Student feedback</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-slate-900">4.8</p>
+                      <p className="text-amber-600 text-sm font-medium">/ 5.0 rating</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+
+            {/* Right Column - Courses Management */}
+            <motion.div
+              className="xl:col-span-1"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <div className={`${glassStyle} rounded-3xl p-8 h-full`}>
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl shadow-lg">
+                      <DocumentChartBarIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-slate-900">Course Portfolio</h2>
+                      <p className="text-slate-600 mt-1">
+                        {loading ? "Analyzing your content..." : `Masterpiece management for ${stats.totalCourses} courses`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="p-3 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-colors duration-200"
+                    >
+                      <CogIcon className="h-5 w-5 text-slate-600" />
+                    </motion.button>
+                    <div className="flex items-center gap-2">
+                      <motion.span
+                        whileHover={{ scale: 1.05 }}
+                        className="px-3 py-2 bg-emerald-100 text-emerald-700 rounded-2xl font-semibold text-sm"
+                      >
+                        Live: {stats.activeCourses}
+                      </motion.span>
+                      <motion.span
+                        whileHover={{ scale: 1.05 }}
+                        className="px-3 py-2 bg-blue-100 text-blue-700 rounded-2xl font-semibold text-sm"
+                      >
+                        Draft: {stats.draftCourses}
+                      </motion.span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <CourseView />
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Premium Support Section */}
+          <motion.div
+            className="mt-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+          >
+            <div className={`${glassStyle} rounded-3xl overflow-hidden`}>
+              <div className="bg-gradient-to-r from-slate-800 to-slate-900 p-8 text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-24 translate-x-24" />
+                <div className="relative">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-white/10 rounded-xl backdrop-blur-sm">
+                          <LightBulbIcon className="h-6 w-6 text-white" />
+                        </div>
+                        <h3 className="text-2xl font-bold">Elevate Your Teaching</h3>
+                      </div>
+                      <p className="text-slate-300 text-lg max-w-2xl leading-relaxed">
+                        {stats.totalCourses === 0
+                          ? "Join thousands of educators creating transformative learning experiences. Our comprehensive guides and expert support will help you launch your first course with confidence."
+                          : `You're managing ${stats.totalCourses} courses like a pro! Explore advanced features to scale your impact and reach more students worldwide.`
+                        }
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4 ml-8">
+                      <motion.button
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => window.open("/docs/course-creation", "_blank")}
+                        className="px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-2xl font-semibold transition-all duration-300 border border-white/20"
+                      >
+                        Expert Guides
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => navigate("/support")}
+                        className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                      >
+                        Premium Support
+                      </motion.button>
+                    </div>
+                  </div>
+
+                  {/* Feature Highlights */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                    {[
+                      { icon: SparklesIcon, text: "AI-Powered Insights" },
+                      { icon: TrophyIcon, text: "Certification Tools" },
+                      { icon: ShareIcon, text: "Global Distribution" },
+                    ].map((feature, index) => (
+                      <motion.div
+                        key={feature.text}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.7 + index * 0.1 }}
+                        className="flex items-center gap-3 text-slate-300"
+                      >
+                        <feature.icon className="h-5 w-5 text-blue-400" />
+                        <span className="font-medium">{feature.text}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       </div>
-
-      {error && <div className="text-sm text-red-600 mb-2">{error}</div>}
-
-      <div className="flex gap-2 mt-2">
-        <button
-          type="submit"
-          disabled={creating}
-          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-60"
-        >
-          {creating ? 'Creating…' : 'Create & Draft'}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setTitle('');
-            setAudience('');
-            setDuration('4');
-            setFormat('self-paced');
-            setError(null);
-          }}
-          className="px-4 py-2 border rounded"
-          disabled={creating}
-        >
-          Clear
-        </button>
-      </div>
-
-      <p className="text-xs text-gray-400 mt-3">
-        AI drafting runs in the background — you will be redirected to the editor after creation.
-      </p>
-    </form>
+    </LazyMotion>
   );
 }

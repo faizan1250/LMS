@@ -15,73 +15,145 @@ if (!GEMINI_API_KEY) {
 // init client if key present
 const genAI = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
-/**
- * Course schema used for validation of AI output
- * (keeps same structure you had earlier)
- */
+/* ---------------- JSON schema for richer plan ---------------- */
 const ajv = new Ajv({ allErrors: true, strict: false });
+
+const resourceLinkSchema = {
+  type: 'object',
+  required: ['url'],
+  additionalProperties: false,
+  properties: {
+    label: { type: 'string' },
+    url: { type: 'string', format: 'uri' },
+    source: { type: 'string', enum: ['wikipedia', 'web', 'other'] }
+  }
+};
+
+const assignmentSchema = {
+  type: 'object',
+  required: ['title', 'description', 'instructions', 'required'],
+  additionalProperties: false,
+  properties: {
+    title: { type: 'string' },
+    description: { type: 'string', maxLength: 1000 },
+    instructions: { type: 'string', maxLength: 2000 },
+    required: { type: 'boolean' }
+  }
+};
+
+const lessonSchema = {
+  type: 'object',
+  required: ['title', 'order', 'description', 'content', 'resources', 'assignment'],
+  additionalProperties: false,
+  properties: {
+    title: { type: 'string' },
+    order: { type: 'integer' },
+    description: { type: 'string', maxLength: 600 },
+    content: { type: 'string', maxLength: 4000 },
+    resources: { type: 'array', items: resourceLinkSchema, minItems: 1 },
+    assignment: assignmentSchema
+  }
+};
+
+const quizQuestionSchema = {
+  type: 'object',
+  required: ['prompt', 'options', 'correctIndex'],
+  additionalProperties: false,
+  properties: {
+    prompt: { type: 'string' },
+    options: {
+      type: 'array',
+      items: { type: 'object', required: ['text'], additionalProperties: false, properties: { text: { type: 'string' } } },
+      minItems: 2
+    },
+    correctIndex: { type: 'integer', minimum: 0 }
+  }
+};
+
+const moduleQuizSchema = {
+  type: 'object',
+  required: ['questions', 'passPercent'],
+  additionalProperties: false,
+  properties: {
+    questions: { type: 'array', items: quizQuestionSchema, minItems: 10 },
+    passPercent: { type: 'integer', minimum: 50, maximum: 100 }
+  }
+};
+
+const moduleSchema = {
+  type: 'object',
+  required: ['title', 'order', 'lessons', 'quiz'],
+  additionalProperties: false,
+  properties: {
+    title: { type: 'string' },
+    order: { type: 'integer' },
+    lessons: { type: 'array', items: lessonSchema, minItems: 5 },
+    quiz: moduleQuizSchema
+  }
+};
+
+const assessmentSchema = {
+  type: 'object',
+  required: ['type', 'order', 'data'],
+  additionalProperties: false,
+  properties: {
+    type: { type: 'string', enum: ['quiz', 'project', 'assignment'] },
+    order: { type: 'integer' },
+    data: { type: 'object' }
+  }
+};
+
 const courseSchema = {
   type: 'object',
   required: ['description', 'modules', 'assessments'],
+  additionalProperties: false,
   properties: {
     description: { type: 'string', maxLength: 500 },
-    modules: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['title', 'order', 'lessons'],
-        properties: {
-          title: { type: 'string' },
-          order: { type: 'integer' },
-          lessons: {
-            type: 'array',
-            items: {
-              type: 'object',
-              required: ['title', 'order', 'content'],
-              properties: {
-                title: { type: 'string' },
-                order: { type: 'integer' },
-                content: { type: 'string', maxLength: 2000 }
-              }
-            }
-          }
-        }
-      }
-    },
-    assessments: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['type', 'order', 'data'],
-        properties: {
-          type: { type: 'string', enum: ['quiz', 'project', 'assignment'] },
-          order: { type: 'integer' },
-          data: { type: 'object' }
-        }
-      }
-    }
+    modules: { type: 'array', items: moduleSchema, minItems: 1 },
+    assessments: { type: 'array', items: assessmentSchema }
   }
 };
+
 const validateCourse = ajv.compile(courseSchema);
 
-/* ---------------- default fallback (strict) ----------------
-   If AI output is missing or invalid we use this structured fallback.
-   This is intentionally conservative and valid against the schema.
-*/
+/* ---------------- default fallback (valid to new schema) ---------------- */
 function defaultCoursePlan({ title = 'Untitled Course' } = {}) {
+  const mkQ = (i) => ({
+    prompt: `Check ${i + 1}: Basic concept`,
+    options: [{ text: 'A' }, { text: 'B' }, { text: 'C' }, { text: 'D' }],
+    correctIndex: 0
+  });
+  const mkLesson = (i) => ({
+    title: `Lesson ${i + 1}`,
+    order: i,
+    description: 'Key ideas, definitions, and a short overview.',
+    content: 'Concise explanation of the topic with examples. Focus on core intuition and outcomes.',
+    resources: [
+      { label: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/Main_Page', source: 'wikipedia' }
+    ],
+    assignment: {
+      title: 'Assignment',
+      description: 'Apply the concept in a short exercise.',
+      instructions: 'Submit a brief write-up or code snippet showing your approach.',
+      required: true
+    }
+  });
+
   return {
-    description: `${title} — an auto-generated course summary.`,
+    description: `${title} — auto-generated outline with lessons, assignments, and quizzes.`,
     modules: [
       {
-        title: 'Introduction',
+        title: 'Module 1: Foundations',
         order: 0,
-        lessons: [
-          { title: 'Welcome & Overview', order: 0, content: 'Course overview, objectives and how to use the materials.' }
-        ]
+        lessons: Array.from({ length: 5 }, (_, i) => mkLesson(i)),
+        quiz: {
+          questions: Array.from({ length: 10 }, (_, i) => mkQ(i)),
+          passPercent: 75
+        }
       }
     ],
     assessments: [
-      { type: 'quiz', order: 0, data: { questions: [] } }
+      { type: 'quiz', order: 0, data: { scope: 'module', moduleOrder: 0 } }
     ]
   };
 }
@@ -89,64 +161,91 @@ function defaultCoursePlan({ title = 'Untitled Course' } = {}) {
 /* ---------------- prompt builders ---------------- */
 function buildMainPrompt({ title, audience = 'beginners', duration = 'self-paced', format = 'mixed' }) {
   return `
-You are an expert curriculum designer. Output exactly one valid JSON object (no commentary, no markdown, no code fences) that matches this schema (use double quotes, no trailing commas):
+You are an expert curriculum designer. Return ONLY a single valid JSON object (no commentary, no markdown) that matches EXACTLY this structure and constraints:
 
 {
-  "description": string,
+  "description": string, // ≤ 40 words
   "modules": [
     {
       "title": string,
       "order": integer,
       "lessons": [
-        { "title": string, "order": integer, "content": string }
-      ]
+        {
+          "title": string,
+          "order": integer,
+          "description": string,     // short, ≤ 60 words
+          "content": string,         // ≤ 200 words
+          "resources": [             // ≥ 1 item; include Wikipedia links when possible
+            { "label": string, "url": string, "source": "wikipedia" | "web" | "other" }
+          ],
+          "assignment": {
+            "title": string,
+            "description": string,
+            "instructions": string,
+            "required": true
+          }
+        }
+      ], // At least 5 lessons per module
+      "quiz": {
+        "questions": [               // Exactly 10 preferred, ≥ 10 required
+          {
+            "prompt": string,
+            "options": [ { "text": string }, ... ], // 4 options typical
+            "correctIndex": integer                  // 0-based
+          }
+        ],
+        "passPercent": 75
+      }
     }
   ],
   "assessments": [
-    { "type": "quiz|project|assignment", "order": integer, "data": object }
+    { "type": "quiz" | "project" | "assignment", "order": integer, "data": object }
   ]
 }
 
 Rules:
-1) Use empty string "" or [] for unknown/omittable values. Do not use null.
-2) Keep description to ~1-2 sentences (max 40 words).
-3) Lesson content should be concise (<=120 words).
-4) Quizzes: questions must have at least 2 options and a valid 0-based answerIndex.
-5) Follow schema types strictly.
-6) Do not include any extra fields. No urls, no citations, no commentary.
+1) Use only JSON keys shown. No extra fields. No nulls. Use "" or [] if unknown.
+2) At least one module. Each module has ≥ 5 lessons.
+3) Provide at least one resource per lesson. Prefer Wikipedia URLs when applicable.
+4) Provide a required assignment for every lesson.
+5) Provide a module quiz with ≥ 10 questions. Each question has options and a valid 0-based correctIndex.
+6) Keep language concise and concrete.
 
-Input:
+Input context:
 title: "${title}"
 audience: "${audience}"
 duration: "${duration}"
 format: "${format}"
 
-Return the JSON now.
+Return JSON now.
 `.trim();
 }
 
 function buildRepairPrompt(invalidText) {
   return `
-The previous output failed to parse as valid JSON or did not match the required schema. Here is the exact invalid output:
+The previous output failed JSON parsing or schema validation. Here is the exact invalid output:
 
 ===BEGIN_INVALID===
 ${invalidText}
 ===END_INVALID===
 
-Your task: Return only a single corrected, valid JSON object that conforms exactly to the schema provided earlier. Fix punctuation, missing quotes, trailing commas, or stray text. If you cannot recover details confidently, return the simplest valid JSON preserving the structure (use "" or [] where needed). No commentary, no markdown, no explanation — JSON only.
+Return ONLY a single corrected JSON object that conforms to the schema and constraints described earlier:
+- modules ≥ 1
+- each module: lessons ≥ 5 with description, content, resources[], assignment{...}
+- each module: quiz.questions ≥ 10, each with options[] and correctIndex
+- passPercent present (75 default)
+- no extra fields, no nulls
+
+No commentary or markdown — JSON only.
 `.trim();
 }
 
-/* ---------------- small helper to extract text ----------------
-   The Google SDK response shape can vary. Try common locations.
-*/
+/* ---------------- extract model text helper ---------------- */
 function extractTextFromModelResult(result) {
   if (!result) return '';
-  // common shapes: result.candidates[0].content.parts[0].text or result.output[0].content.parts...
   try {
     const cand = result?.candidates?.[0] || null;
     if (cand) {
-      // candidate.content.parts (array of {text}) OR candidate.content itself
       const parts = cand?.content?.parts || cand?.content || null;
       if (Array.isArray(parts) && parts.length) {
         return parts.map(p => (typeof p === 'string' ? p : p?.text || '')).join('');
@@ -154,30 +253,19 @@ function extractTextFromModelResult(result) {
       if (typeof cand?.text === 'string') return cand.text;
       if (typeof cand?.outputText === 'string') return cand.outputText;
     }
-
-    // older shape
     if (Array.isArray(result?.output) && result.output.length > 0) {
       const out = result.output[0];
       const parts = out?.content?.parts;
       if (Array.isArray(parts)) return parts.map(p => p?.text || '').join('');
     }
-
-    // final fallback
     return typeof result === 'string' ? result : JSON.stringify(result);
   } catch (e) {
     return String(result || '');
   }
 }
 
-/* ---------------- the exported function ----------------
-   Mirrors the example: call model, clean text, parse JSON, validate; fallback on errors.
-   Returns an object with shape similar to your previous implementation:
-     - on success: { success: true, parsed, rawText }
-     - on parse/validation failure: { success: false, rawText, parseError?, validationErrors? }
-     - on model/network error: throws Error (except in non-prod where a safe fallback is returned)
-*/
+/* ---------------- main exported function ---------------- */
 export async function callAIGenerate({ title, audience, duration, format } = {}) {
-  // If no API key and we are in dev, return the fallback immediately (helpful for offline dev)
   if (!GEMINI_API_KEY) {
     if (!IS_PROD) {
       console.warn('[callAIGenerate] GEMINI_API_KEY missing — returning dev fallback output.');
@@ -187,7 +275,6 @@ export async function callAIGenerate({ title, audience, duration, format } = {})
     throw new Error('GEMINI_API_KEY not configured in environment');
   }
 
-  // Build prompt and call model
   const prompt = buildMainPrompt({ title, audience, duration, format });
 
   try {
@@ -199,39 +286,28 @@ export async function callAIGenerate({ title, audience, duration, format } = {})
     const rawText = extractTextFromModelResult(result);
 
     if (!rawText || rawText.trim() === '') {
-      // no usable text returned
-      console.warn('[callAIGenerate] model returned empty text');
-      // attempt a repair pass (best-effort)
+      // try repair
       try {
         const repairResult = await genAI.models.generateContent({
           model: MODEL,
           contents: [{ role: 'user', parts: [{ text: buildRepairPrompt(rawText || '') }] }]
         });
         const repairText = extractTextFromModelResult(repairResult);
-        if (repairText && repairText.trim() !== '') {
-          // try parse below with repairText
-          return parseAndValidate(repairText);
-        }
+        if (repairText && repairText.trim() !== '') return parseAndValidate(repairText);
       } catch (repairErr) {
         console.warn('[callAIGenerate] repair attempt failed', repairErr?.message || repairErr);
       }
-
-      // final fallback for non-production: return default plan
       if (!IS_PROD) {
         const parsed = defaultCoursePlan({ title });
         return { success: true, parsed, rawText: JSON.stringify(parsed, null, 2) };
       }
-
-      // production: return failure object
       return { success: false, rawText: null, parseError: 'no_text_from_model' };
     }
 
-    // try parse & validate main output
     const parsedAttempt = await parseAndValidate(rawText);
     if (parsedAttempt.success) return parsedAttempt;
 
-    // if parse/validate failed, attempt repair prompt
-    console.info('[callAIGenerate] main parse/validation failed; attempting repair step');
+    // repair step
     try {
       const repairResult = await genAI.models.generateContent({
         model: MODEL,
@@ -241,48 +317,58 @@ export async function callAIGenerate({ title, audience, duration, format } = {})
       if (repairText && repairText.trim() !== '') {
         const parsedRepair = await parseAndValidate(repairText);
         if (parsedRepair.success) return parsedRepair;
-        // if still invalid, fall through to fallback/return below
         return { success: false, rawText: repairText, parseError: parsedRepair.parseError, validationErrors: parsedRepair.validationErrors };
       }
     } catch (repairErr) {
       console.warn('[callAIGenerate] repair prompt failed', repairErr?.message || repairErr);
     }
 
-    // Final fallback: in dev return default plan, in prod return failure details
     if (!IS_PROD) {
       const parsed = defaultCoursePlan({ title });
       return { success: true, parsed, rawText: JSON.stringify(parsed, null, 2) };
     }
     return { success: false, rawText, parseError: 'parse_and_repair_failed' };
   } catch (err) {
-    // model/network error
     console.error('[callAIGenerate] AI call failed:', err?.message || err);
     if (!IS_PROD) {
       const parsed = defaultCoursePlan({ title });
       return { success: true, parsed, rawText: JSON.stringify(parsed, null, 2) };
     }
-    // bubble up in production
     throw new Error(`AI model call failed: ${err?.message || String(err)}`);
   }
 }
 
-/* ---------------- helper: parse & validate ----------------
-   Returns the canonical return shape for parse attempts.
-*/
+/* ---------------- parse & validate ---------------- */
 async function parseAndValidate(rawText) {
   try {
-    // Strip common markdown/code fences
     const cleaned = (rawText || '')
       .replace(/^```(?:json)?\s*/i, '')
       .replace(/\s*```$/, '')
       .trim();
 
     const parsed = JSON.parse(cleaned);
+
+    // extra guard: ensure each module quiz has at least 10 Qs and passPercent set
+    if (Array.isArray(parsed?.modules)) {
+      for (const m of parsed.modules) {
+        if (!m.quiz) m.quiz = { questions: [], passPercent: 75 };
+        if (!Array.isArray(m.quiz.questions)) m.quiz.questions = [];
+        if (typeof m.quiz.passPercent !== 'number') m.quiz.passPercent = 75;
+      }
+    }
+
     const valid = validateCourse(parsed);
     if (valid) {
+      // secondary constraint: correctIndex < options.length for all questions
+      for (const m of parsed.modules) {
+        for (const q of m.quiz.questions) {
+          if (!Array.isArray(q.options) || q.correctIndex < 0 || q.correctIndex >= q.options.length) {
+            return { success: false, rawText: cleaned, validationErrors: [{ message: 'correctIndex out of range in quiz question' }] };
+          }
+        }
+      }
       return { success: true, parsed, rawText: cleaned };
     }
-    // validation failed
     return { success: false, rawText: cleaned, validationErrors: validateCourse.errors || [] };
   } catch (err) {
     return { success: false, rawText, parseError: err?.message || String(err) };
