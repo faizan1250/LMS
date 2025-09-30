@@ -18,6 +18,13 @@ export const getTest = async (id) => {
   return res.data;
 };
 
+// Student-accessible function to get published test
+export const getPublishedTest = async (id) => {
+  if (!id) throw new Error('test id required');
+  const res = await api.get(`/tests/published/${id}`);
+  return res.data;
+};
+
 export const updateTest = async (id, payload) => {
   if (!id) throw new Error('test id required');
   const res = await api.put(`/tests/${id}`, payload);
@@ -51,6 +58,12 @@ export const getTestStats = async (id) => {
   return res.data;
 };
 
+export const getTestSubmissions = async (id) => {
+  if (!id) throw new Error('test id required');
+  const res = await api.get(`/tests/${id}/submissions`);
+  return res.data;
+};
+
 // canonical name used by UI
 export const getTestAttempts = async (id, params = {}) => {
   if (!id) throw new Error('test id required');
@@ -63,7 +76,14 @@ export const listAttempts = getTestAttempts;
 
 export const submitAttempt = async (id, payload) => {
   if (!id) throw new Error('test id required');
-  const res = await api.post(`/tests/${id}/attempts`, payload);
+  const res = await api.post(`/tests/${id}/submit`, payload);
+  return res.data;
+};
+
+// Student function to get their own attempt for a test
+export const getMyAttempt = async (id) => {
+  if (!id) throw new Error('test id required');
+  const res = await api.get(`/tests/${id}/my-attempt`);
   return res.data;
 };
 
@@ -96,9 +116,11 @@ export default {
   publishTest,
   pollGeneration,
   getTestStats,
+  getTestSubmissions,
   getTestAttempts,
   listAttempts,
   submitAttempt,
+  getMyAttempt,
   getCourseTests,
   listMyTests,
 };

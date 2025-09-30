@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from "framer-motion";
+import { AnimatePresence } from 'framer-motion';
 import {
   MagnifyingGlassIcon,
   BookmarkIcon,
@@ -11,7 +12,9 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   TrophyIcon,
-  PencilSquareIcon
+  PencilSquareIcon,
+  DocumentCheckIcon,
+  QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate } from "react-router-dom";
 import {
@@ -26,8 +29,8 @@ import {
 } from "../api/course";
 import {
   getCourseTests,
-  getTestAttempts,
 } from "../api/test";
+import testApi from "../api/test";
 
 function clampPercent(n) {
   if (n == null || isNaN(n)) return 0;
@@ -87,7 +90,9 @@ export default function StudentCoursesPage() {
         const list = data?.courses || data?.rows || (Array.isArray(data) ? data : []);
         const ids = list.map((x) => x._id || x.course?._id || x.course).filter(Boolean);
         setEnrolledIds(ids);
-      } catch {}
+      } catch {
+        // Ignore errors when fetching data
+      }
     })();
   }, []);
 
@@ -99,7 +104,9 @@ export default function StudentCoursesPage() {
         const list = data?.courses || data?.rows || (Array.isArray(data) ? data : []);
         const ids = list.map((x) => x._id || x.course?._id || x.course).filter(Boolean);
         setBookmarkIds(ids);
-      } catch {}
+      } catch {
+        // Ignore errors when fetching data
+      }
     })();
   }, []);
 
@@ -121,7 +128,9 @@ export default function StudentCoursesPage() {
           }
         }
         setPercentMap((m) => ({ ...m, ...merged }));
-      } catch {}
+      } catch {
+        // Ignore errors when fetching data
+      }
     })();
   }, [enrolledIds]);
 
@@ -153,23 +162,27 @@ export default function StudentCoursesPage() {
 
         setTestsByCourse(nextTestsByCourse);
 
-        // my latest attempt for each test (optional; ignore errors)
-        if (testIds.length) {
-          const attemptsResults = await Promise.allSettled(
-            testIds.map(tid => getTestAttempts(tid, { mine: true, latest: true, _ts: Date.now() }))
-          );
-          const map = {};
-          testIds.forEach((tid, idx) => {
-            if (attemptsResults[idx].status === 'fulfilled') {
-              const val = attemptsResults[idx].value || {};
-              const arr =
-                Array.isArray(val?.attempts) ? val.attempts :
-                Array.isArray(val?.rows) ? val.rows :
-                Array.isArray(val) ? val : [];
-              map[tid] = arr[0] || val.attempt || null;
-            }
-          });
-          setMyAttemptByTest(map);
+        // Fetch my attempts for all tests
+        if (testIds.length > 0) {
+          try {
+            const attemptResults = await Promise.allSettled(
+              testIds.map(testId => testApi.getMyAttempt(testId))
+            );
+            
+            const nextMyAttemptByTest = {};
+            testIds.forEach((testId, idx) => {
+              if (attemptResults[idx].status === 'fulfilled' && attemptResults[idx].value.attempt) {
+                nextMyAttemptByTest[testId] = attemptResults[idx].value.attempt;
+              }
+            });
+            
+            setMyAttemptByTest(nextMyAttemptByTest);
+          } catch (err) {
+            console.warn('Failed to fetch test attempts:', err);
+            setMyAttemptByTest({});
+          }
+        } else {
+          setMyAttemptByTest({});
         }
       } catch {
         // soft-fail; don't block course list
@@ -231,9 +244,9 @@ export default function StudentCoursesPage() {
   function openTest(test) {
     const mine = myAttemptByTest[test._id];
     if (mine && (mine.submittedAt || mine.status === 'submitted' || mine.score != null)) {
-      navigate(`/tests/${test._id}/review`);
+      navigate(`/student-tests/${test._id}/results`);
     } else {
-      navigate(`/tests/${test._id}/attempt`);
+      navigate(`/student-tests/${test._id}`);
     }
   }
 
@@ -442,7 +455,11 @@ export default function StudentCoursesPage() {
                                   }`}
                                   title={t.title}
                                 >
-                                  {isDone ? <TrophyIcon className="h-4 w-4" /> : <PencilSquareIcon className="h-4 w-4" />}
+                                  {isDone ? (
+                                    <CheckCircleIcon className="h-4 w-4 flex-shrink-0" />
+                                  ) : (
+                                    <QuestionMarkCircleIcon className="h-4 w-4 flex-shrink-0" />
+                                  )}
                                   <span className="truncate max-w-[120px]">
                                     {testBadgeLabel(t)}
                                   </span>

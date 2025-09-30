@@ -23,6 +23,9 @@ router.get('/published/:id', protect, authorize('student'), ctrl.getPublishedTes
 // submit attempt (student)
 router.post('/:id/submit', protect, authorize('student'), ctrl.submitAttempt);
 
+// get my attempt for a test (student)
+router.get('/:id/my-attempt', protect, authorize('student'), ctrl.getMyAttempt);
+
 /**
  * TEACHER ROUTES
  */

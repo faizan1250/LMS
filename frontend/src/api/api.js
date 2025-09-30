@@ -17,25 +17,6 @@ const api = axios.create({
 api.interceptors.request.use((cfg) => {
   const token = getLocalAccessToken();
   if (token) cfg.headers = { ...cfg.headers, Authorization: `Bearer ${token}` };
-  return cfg;
-});
-
-// single-refresh-on-401 response interceptor
-let isRefreshing = false;
-let queue = [];
-
-const processQueue = (err, token = null) => {
-  queue.forEach(({ resolve, reject }) => {
-    if (err) reject(err);
-    else resolve(token);
-  });
-  queue = [];
-};
-
-// frontend/src/api/api.js
-api.interceptors.request.use((cfg) => {
-  const token = getLocalAccessToken();
-  if (token) cfg.headers = { ...cfg.headers, Authorization: `Bearer ${token}` };
 
   // --- BEGIN: test route alias rewrite ---
   // Map FE alias /courses/:courseId/tests -> /tests/courses/:courseId/tests

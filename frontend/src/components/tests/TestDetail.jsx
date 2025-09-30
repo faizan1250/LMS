@@ -32,11 +32,11 @@ export default function TestDetail() {
       const [t, s, a] = await Promise.all([
         testApi.getTest(id),
         testApi.getTestStats(id).catch(() => null),
-        testApi.getTestAttempts(id).catch(() => []),
+        testApi.getTestSubmissions(id).catch(() => []),
       ]);
       setTest(t?.test || t);
       setStats(s?.stats || s);
-      const rows = a?.attempts || a?.rows || (Array.isArray(a) ? a : []);
+      const rows = a?.submissions || a?.attempts || a?.rows || (Array.isArray(a) ? a : []);
       setAttempts(rows);
     } catch (e) {
       setError(e?.response?.data?.error || e.message || "Failed to load test");
@@ -301,7 +301,7 @@ export default function TestDetail() {
                             #{i + 1}
                           </div>
                         </td>
-                        <td className="px-4 py-3">{a.student?.name || a.student?.email || a.userId}</td>
+                        <td className="px-4 py-3">{a.student?.name || a.student?.email || a.userId?.name || a.userId?.email || 'Unknown'}</td>
                         <td className="px-4 py-3">{a.submittedAt ? new Date(a.submittedAt).toLocaleString() : "—"}</td>
                         <td className="px-4 py-3">{a.score != null ? `${Math.round(a.score)}%` : "—"}</td>
                       </tr>

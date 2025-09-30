@@ -10,16 +10,19 @@ import LandingPage from "./pages/LandingPage";
 import CourseInfo from "./components/teacher/CourseInfo";
 import CourseEditor from "./components/teacher/CourseEditor"; // 👈 import editor
 import CourseView from "./components/teacher/CourseView";
-import { useAuth } from "./context/AuthContext";
+// import { useAuth } from "./context/AuthContext";
 import StudentCoursesPage from "./pages/StudentCoursesPage";
 import CourseDetailPage from "./pages/CourseDetailPage";
 import GradeAssignmentsPage from "./components/teacher/GradeAssignmentsPage";
 import TestCreator from "./components/tests/TestCreator";
 import TeacherTestsPage from "./components/tests/TeacherTestsPage";
 import TestDetail from "./components/tests/TestDetail";
+import StudentTestListPage from "./pages/StudentTestListPage";
+import StudentTestAttemptPage from "./pages/StudentTestAttemptPage";
+import StudentTestResultsPage from "./pages/StudentTestResultsPage";
 
 function App() {
-  const { user } = useAuth(); // must return user with .role
+  // const { user } = useAuth(); // must return user with .role
 
   return (
     <Routes>
@@ -63,7 +66,6 @@ function App() {
           </RequireRole>
         }
       />
-      // in App.jsx routes
       <Route
         path="/assignments"
         element={
@@ -72,6 +74,32 @@ function App() {
           </RequireRole>
         }
       />
+      {/* Student Test Routes */}
+      <Route
+        path="/student-tests"
+        element={
+          <RequireRole allowed={["student"]}>
+            <StudentTestListPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/student-tests/:testId"
+        element={
+          <RequireRole allowed={["student"]}>
+            <StudentTestAttemptPage />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/student-tests/:testId/results"
+        element={
+          <RequireRole allowed={["student"]}>
+            <StudentTestResultsPage />
+          </RequireRole>
+        }
+      />
+      {/* Teacher Test Routes */}
       <Route
         path="/tests"
         element={
@@ -93,6 +121,14 @@ function App() {
         element={
           <RequireRole allowed={["teacher", "admin"]}>
             <TestDetail />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/tests/:id/preview"
+        element={
+          <RequireRole allowed={["teacher", "admin"]}>
+            <StudentTestAttemptPage />
           </RequireRole>
         }
       />

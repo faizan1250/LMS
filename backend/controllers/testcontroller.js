@@ -207,6 +207,15 @@ export async function submitAttempt(req, res, next) {
   } catch (e) { next(e); }
 }
 
+// STUDENT: get my attempts for a test
+export async function getMyAttempt(req, res, next) {
+  try {
+    const testId = req.params.id;
+    const attempt = await TestAttempt.findOne({ testId, userId: req.user.id }).lean();
+    res.json({ attempt });
+  } catch (e) { next(e); }
+}
+
 // TEACHER: submissions table
 export async function listSubmissions(req, res, next) {
   try {
@@ -221,7 +230,7 @@ export async function listTestsByCourse(req, res, next) {
     const { publishedOnly } = req.query;
 
     const query = { courseId };
-    if (String(publishedOnly) === 'true') query.published = true;
+    if (String(publishedOnly) === 'true') query.status = 'published';
 
     const tests = await Test.find(query).sort({ dueAt: 1, createdAt: -1 }).lean();
     return res.json({ tests });
