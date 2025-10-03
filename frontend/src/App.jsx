@@ -20,6 +20,7 @@ import TestDetail from "./components/tests/TestDetail";
 import StudentTestListPage from "./pages/StudentTestListPage";
 import StudentTestAttemptPage from "./pages/StudentTestAttemptPage";
 import StudentTestResultsPage from "./pages/StudentTestResultsPage";
+import CreateCourseForm from "./components/teacher/CreateCourseForm";
 
 function App() {
   // const { user } = useAuth(); // must return user with .role
@@ -129,6 +130,15 @@ function App() {
         element={
           <RequireRole allowed={["teacher", "admin"]}>
             <StudentTestAttemptPage />
+          </RequireRole>
+        }
+      />
+      {/* Course creation route - must come before /courses/:courseId */}
+      <Route
+        path="/courses/new"
+        element={
+          <RequireRole allowed={["teacher", "admin"]}>
+            <CreateCourseForm />
           </RequireRole>
         }
       />

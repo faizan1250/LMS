@@ -364,7 +364,7 @@ export default function CourseInfo() {
       label: "AI Course Generator",
       description: "Create a complete course with AI in minutes",
       color: "accent",
-      onClick: () => navigate("/courses/create?method=ai"),
+      onClick: () => navigate("/courses/new?method=ai"),
       featured: true
     },
     {
@@ -372,14 +372,14 @@ export default function CourseInfo() {
       label: "Blank Course Template",
       description: "Start from scratch with full customization",
       color: "primary",
-      onClick: () => navigate("/courses/create?method=blank"),
+      onClick: () => navigate("/courses/new?method=blank"),
     },
     {
       icon: ShareIcon,
       label: "Import Existing Content",
       description: "Bring in materials from other platforms",
       color: "success",
-      onClick: () => navigate("/courses/create?method=import"),
+      onClick: () => navigate("/courses/new?method=import"),
     },
   ];
 
@@ -391,7 +391,7 @@ export default function CourseInfo() {
       features: ["Auto-generated content", "Smart quiz creation", "Assignment templates", "SEO optimization"],
       ctaText: "Generate with AI",
       variant: "accent",
-      onClick: () => navigate("/courses/create?method=ai")
+      onClick: () => navigate("/courses/new?method=ai")
     },
     {
       icon: BookOpenIcon,
@@ -400,7 +400,7 @@ export default function CourseInfo() {
       features: ["Drag & drop modules", "Custom assessments", "Multimedia support", "Advanced analytics"],
       ctaText: "Start Building",
       variant: "primary",
-      onClick: () => navigate("/courses/create?method=manual")
+      onClick: () => navigate("/courses/new?method=manual")
     },
     {
       icon: PuzzlePieceIcon,
@@ -409,7 +409,7 @@ export default function CourseInfo() {
       features: ["50+ templates", "Industry-specific", "Mobile-optimized", "Proven formats"],
       ctaText: "Browse Templates",
       variant: "success",
-      onClick: () => navigate("/courses/create?method=templates")
+      onClick: () => navigate("/courses/new?method=templates")
     }
   ];
 
@@ -790,7 +790,7 @@ export default function CourseInfo() {
                         transition={{ delay: 0.6 + index * 0.1 }}
                         whileHover={{ y: -4 }}
                         className="bg-white rounded-2xl border border-slate-200 p-6 cursor-pointer group hover:shadow-lg transition-all duration-300"
-                        onClick={() => navigate(`/courses/create?template=${template.name.toLowerCase()}`)}
+                        onClick={() => navigate(`/courses/new?template=${template.name.toLowerCase()}`)}
                       >
                         <div className={`w-12 h-12 bg-gradient-to-br from-${template.color}-500 to-${template.color}-600 rounded-2xl flex items-center justify-center mb-4`}>
                           <VideoCameraIcon className="h-6 w-6 text-white" />

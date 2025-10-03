@@ -305,7 +305,7 @@ export default function TeacherDashboard({ user }) {
       label: "Create New Course",
       description: "Design and publish a new course with AI assistance",
       icon: RocketLaunchIcon,
-      action: () => navigate("/courses/create"),
+      action: () => navigate("/courses/new"),
       color: "primary",
       featured: true
     },
@@ -496,7 +496,7 @@ export default function TeacherDashboard({ user }) {
                         {...action} 
                         onClick={() => handleNavigation(
                           action.label === "Manage Assessments" ? "/tests" : 
-                          action.label === "Create New Course" ? "/courses/create" :
+                          action.label === "Create New Course" ? "/courses/new" :
                           action.label === "Grade Assignments" ? "/assignments" :
                           action.label === "View Analytics" ? "/analytics" :
                           "/courses"
@@ -677,7 +677,7 @@ export default function TeacherDashboard({ user }) {
                 </p>
               </div>
               <button
-                onClick={() => handleNavigation("/courses/create?method=ai", "AI Assistant")}
+                onClick={() => handleNavigation("/courses/new?method=ai", "AI Assistant")}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 text-sm"
               >
                 Try AI Assistant

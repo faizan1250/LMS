@@ -417,6 +417,27 @@ export const gradeAssignment = async (courseId, lessonId, { userId, grade, feedb
   return res.data; // { ok: true, updated: {...} }
 };
 
+// --- Additional Course Management APIs ---
+
+// Get course categories
+export const getCourseCategories = async () => {
+  const res = await api.get('/courses/categories');
+  return res.data; // { categories: [...] }
+};
+
+// Search courses with filters
+export const searchCourses = async (params = {}) => {
+  const res = await api.get('/courses/search', { params });
+  return res.data; // { courses: [...], pagination: {...} }
+};
+
+// Get course statistics
+export const getCourseStats = async (courseId) => {
+  if (!courseId) throw new Error('courseId is required');
+  const res = await api.get(`/courses/${courseId}/stats`, { withCredentials: true });
+  return res.data; // { totalEnrollments, averageProgress, averageRating, completionRate, ... }
+};
+
 
 // ---------- Convenience exports ----------
 export default {
@@ -443,5 +464,8 @@ export default {
   attemptModuleQuiz,
   getModuleStatus,
   listAssignmentSubmissions,
-  gradeAssignment
+  gradeAssignment,
+  getCourseCategories,
+  searchCourses,
+  getCourseStats
 };

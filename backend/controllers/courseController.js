@@ -131,14 +131,30 @@ async function generateAndPopulateCourse({ courseId, genId, input }) {
 
 export async function createCourse(req, res, next) {
   try {
-    const { title, audience, duration, format } = req.body;
+    const { 
+      title, 
+      description = '', 
+      audience, 
+      duration, 
+      format, 
+      category,
+      difficulty = 'beginner',
+      language = 'english',
+      price = 0,
+      isPublic = true,
+      tags = [],
+      thumbnail,
+      requirements = [],
+      learningOutcomes = []
+    } = req.body;
+    
     if (!title || typeof title !== 'string' || title.trim().length < 3) {
       return res.status(400).json({ error: 'title is required (min 3 chars)' });
     }
 
     const course = await Course.create({
       title: title.trim(),
-      description: '',
+      description: description.trim(),
       status: 'draft',
       createdBy: req.user.id,
       modules: [],
@@ -146,7 +162,16 @@ export async function createCourse(req, res, next) {
       aiGenerated: false,
       audience: audience || null,
       format: format || null,
-      duration: duration || null
+      duration: duration || null,
+      category: category || null,
+      difficulty,
+      language,
+      price: Number(price) || 0,
+      isPublic: Boolean(isPublic),
+      tags: Array.isArray(tags) ? tags : [],
+      thumbnail: thumbnail || null,
+      requirements: Array.isArray(requirements) ? requirements : [],
+      learningOutcomes: Array.isArray(learningOutcomes) ? learningOutcomes : []
     });
 
     const genRecord = await GeneratedData.create({
@@ -235,7 +260,12 @@ export async function updateCourse(req, res, next) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    const updatable = ['title', 'description', 'modules', 'assessments', 'status', 'audience', 'format', 'duration'];
+    const updatable = [
+      'title', 'description', 'modules', 'assessments', 'status', 
+      'audience', 'format', 'duration', 'category', 'difficulty', 
+      'language', 'price', 'isPublic', 'tags', 'thumbnail', 
+      'requirements', 'learningOutcomes'
+    ];
     let touchedModulesOrAssessments = false;
 
     for (const k of updatable) {
@@ -1071,4 +1101,130 @@ export async function gradeAssignment(req, res) {
       gradedAt: aState[String(lessonId)].gradedAt,
     },
   });
+}
+
+/* ========== Additional Course Management Endpoints ========== */
+
+// Get course categories
+export async function getCourseCategories(req, res, next) {
+  try {
+    const categories = await Course.distinct('category', { category: { $ne: null } });
+    return res.json({ categories: categories.filter(Boolean) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Get course statistics for teacher
+export async function getCourseStats(req, res, next) {
+  try {
+    const { id: courseId } = req.params;
+    
+    const course = await Course.findById(courseId);
+    if (!course) return res.status(404).json({ error: 'Course not found' });
+
+    // Check if user owns the course
+    if (course.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const [enrollments, progressData, ratings] = await Promise.all([
+      Enrollment.countDocuments({ courseId }),
+      Progress.find({ courseId }),
+      Rating.find({ courseId })
+    ]);
+
+    const avgProgress = progressData.length > 0 
+      ? Math.round(progressData.reduce((sum, p) => sum + (p.percent || 0), 0) / progressData.length)
+      : 0;
+
+    const avgRating = ratings.length > 0
+      ? Math.round((ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length) * 10) / 10
+      : 0;
+
+    const completionRate = progressData.length > 0
+      ? Math.round((progressData.filter(p => p.percent >= 100).length / progressData.length) * 100)
+      : 0;
+
+    return res.json({
+      totalEnrollments: enrollments,
+      averageProgress: avgProgress,
+      averageRating: avgRating,
+      completionRate,
+      totalRatings: ratings.length,
+      course: {
+        title: course.title,
+        status: course.status,
+        createdAt: course.createdAt,
+        updatedAt: course.updatedAt
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Search courses with advanced filters
+export async function searchCourses(req, res, next) {
+  try {
+    const {
+      q = '',
+      category,
+      difficulty,
+      language = 'english',
+      minPrice = 0,
+      maxPrice = 999999,
+      sortBy = 'newest',
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    const match = { 
+      status: 'published',
+      isPublic: true,
+      language,
+      price: { $gte: Number(minPrice), $lte: Number(maxPrice) }
+    };
+
+    if (q.trim()) {
+      match.$or = [
+        { title: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } },
+        { tags: { $in: [new RegExp(q, 'i')] } }
+      ];
+    }
+
+    if (category) match.category = category;
+    if (difficulty) match.difficulty = difficulty;
+
+    const sortOptions = {
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
+      price_low: { price: 1 },
+      price_high: { price: -1 },
+      title: { title: 1 }
+    };
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const courses = await Course.find(match)
+      .sort(sortOptions[sortBy] || sortOptions.newest)
+      .skip(skip)
+      .limit(Number(limit))
+      .populate('createdBy', 'name email')
+      .lean();
+
+    const total = await Course.countDocuments(match);
+
+    return res.json({
+      courses,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit))
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
 }

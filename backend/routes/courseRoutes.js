@@ -69,4 +69,9 @@ router.post(
   controller.gradeAssignment
 );
 
+// --- Additional Course Management Routes ---
+router.get('/categories', protect, controller.getCourseCategories);
+router.get('/search', protect, controller.searchCourses);
+router.get('/:id/stats', protect, authorize('teacher','admin'), controller.getCourseStats);
+
 export default router;

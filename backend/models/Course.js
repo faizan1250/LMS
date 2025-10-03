@@ -87,7 +87,16 @@ const CourseSchema = new Schema(
     aiGenerated: { type: Boolean, default: false },
     audience: { type: String, default: null },
     format: { type: String, default: null },
-    duration: { type: Number, default: null } // minutes/hours as you prefer
+    duration: { type: String, default: null }, // e.g., "4 weeks", "20 hours"
+    category: { type: String, default: null },
+    difficulty: { type: String, enum: ['beginner', 'intermediate', 'advanced'], default: 'beginner' },
+    language: { type: String, default: 'english' },
+    price: { type: Number, default: 0 },
+    isPublic: { type: Boolean, default: true },
+    tags: { type: [String], default: [] },
+    thumbnail: { type: String, default: null },
+    requirements: { type: [String], default: [] },
+    learningOutcomes: { type: [String], default: [] }
   },
   { timestamps: true }
 );
